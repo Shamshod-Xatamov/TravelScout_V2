@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Trip - TravelScout{% endblock title %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-violet-50 flex items-center justify-center p-6 font-sans">
+
+    <!-- Card -->
+    <div class="w-full max-w-lg bg-white/80 backdrop-blur-2xl rounded-[32px] shadow-2xl border border-white/50 overflow-hidden text-center p-10" data-aos="zoom-in">
+
+        <!-- Icon -->
+        <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        </div>
+
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Delete this trip?</h1>
+        <p class="text-gray-600 mb-8 text-lg">
+            Are you sure you want to delete <span class="font-bold text-gray-900">"{{ trip.destination }}"</span>? This action cannot be undone.
+        </p>
+
+        <form method="post" class="flex gap-4">
+            {% csrf_token %}
+            <!-- Cancel Button -->
+            <a href="{% url 'my_plans_list' %}" class="flex-1 py-4 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors">
+                Cancel
+            </a>
+
+            <!-- Delete Button -->
+            <button type="submit" class="flex-1 py-4 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all">
+                Yes, Delete
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock content %}

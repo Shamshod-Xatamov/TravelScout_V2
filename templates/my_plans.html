@@ -1,0 +1,872 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Plans - TravelScout{% endblock title %}
+
+{% block content %}
+<!-- Alpine.js (Dropdown va Filterlar uchun) -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<!-- Replace the x-data section at the top of your template with this: -->
+
+<div class="min-h-screen bg-gradient-to-br from-orange-50 via-rose-50 to-violet-50 font-sans pb-20"
+     x-data="{
+         viewMode: localStorage.getItem('travelScoutViewMode') || 'grid',
+         modalOpen: false,
+         modalType: '',
+         selectedTrip: { id: null, uuid: '', destination: '' },
+
+         // FIXED: Check if we're on password change page OR if form has errors
+         profileModalOpen: {% if request.resolver_match.url_name == 'custom_password_change' or password_change_form.errors %}true{% else %}false{% endif %},
+
+         // FIXED: Set active tab based on URL or errors
+         activeTab: {% if request.resolver_match.url_name == 'custom_password_change' or password_change_form.errors %}'password'{% else %}'profile'{% endif %},
+
+         successModalOpen: false,
+         searchQuery: '',
+         sortBy: 'recent',
+         showFilters: false,
+         filterBudget: [],
+
+         getGradient(type) {
+             if (type === 'Economy') return 'from-blue-500 to-cyan-500';
+             if (type === 'Standard') return 'from-orange-500 to-rose-500';
+             return 'from-violet-500 to-purple-500';
+         },
+         matchesFilter(destination, budget) {
+            const q = this.searchQuery.toLowerCase();
+            const matchesSearch = destination.toLowerCase().includes(q);
+            const matchesBudget = this.filterBudget.length === 0 || this.filterBudget.includes(budget);
+            return matchesSearch && matchesBudget;
+         },
+         toggleBudget(budget) {
+            if (this.filterBudget.includes(budget)) {
+                this.filterBudget = this.filterBudget.filter(b => b !== budget);
+            } else {
+                this.filterBudget.push(budget);
+            }
+         }
+
+     }"
+
+     x-init="$watch('viewMode', val => localStorage.setItem('travelScoutViewMode', val));
+             {% if messages %}
+                setTimeout(() => successModalOpen = true, 500);
+             {% endif %}">
+
+<!-- Rest of your template stays the same... -->
+
+    <!-- Navbar -->
+    <!-- Navbar (Original Style + Menu + Dropdown) -->
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-gray-200/50"
+         x-data="{ profileOpen: false }"> <!-- 1. Alpine.js state qo'shildi -->
+
+        <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-4 flex items-center justify-between relative">
+
+            <!-- A. LOGO -->
+            <a href="{% url 'home' %}" class="flex items-center gap-3 group shrink-0">
+                <span class="text-2xl font-black bg-gradient-to-r from-orange-600 via-rose-600 to-violet-600 bg-clip-text text-transparent">TravelScout</span>
+            </a>
+
+            <!-- B. ORTA LINKLAR (Flights, Stories, Support) -->
+            <!-- hidden md:flex = telefonda ko'rinmaydi, kompyuterda ko'rinadi -->
+            <div class="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+                <a href="#" class="text-sm font-bold text-gray-500 hover:text-orange-600 transition-colors">Stories</a>
+                <a href="#" class="text-sm font-bold text-gray-500 hover:text-orange-600 transition-colors">Flights</a>
+                <a href="#" class="text-sm font-bold text-gray-500 hover:text-orange-600 transition-colors">Support</a>
+            </div>
+
+            <!-- C. USER PROFILE (DROPDOWN BILAN) -->
+            <div class="relative shrink-0">
+                <!-- Tugma (Trigger) -->
+                <button @click="profileOpen = !profileOpen"
+                        @click.outside="profileOpen = false"
+                        class="flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gray-100/80 hover:bg-gray-200 rounded-full transition-all border border-transparent hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-200">
+
+                    <!-- Avatar -->
+<div class="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 p-[2px]">
+    <div class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+        {% if user.profile.profile_picture %}
+            <!-- Agar rasm bo'lsa, rasmni ko'rsat -->
+            <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}" class="w-full h-full object-cover">
+        {% else %}
+            <!-- Rasm bo'lmasa, harfni ko'rsat -->
+            <span class="font-bold text-sm text-rose-600">{{ user.username|slice:":1"|upper }}</span>
+        {% endif %}
+    </div>
+</div>
+
+                    <!-- Ism -->
+                    <span class="text-gray-700 font-bold text-sm">{{ user.username }}</span>
+
+                    <!-- Pastga qaragan strelka -->
+                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="profileOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <!-- DROPDOWN MENU (Ochiladigan oyna) -->
+                <div x-show="profileOpen"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 translate-y-2"
+                     class="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden"
+                     style="display: none;">
+
+                    <!-- Header qismi -->
+                    <div class="px-4 py-3 border-b border-gray-50">
+                        <p class="text-sm text-gray-500">Signed in as</p>
+                        <p class="text-sm font-bold text-gray-900 truncate">{{ user.email|default:user.username }}</p>
+                    </div>
+
+                    <!-- Menu itemlari -->
+                    <!-- Navbar ichidagi Dropdown menyu qismida -->
+<a href="#"
+   @click.prevent="profileModalOpen = true; profileOpen = false"
+   class="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors flex items-center gap-2">
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    My Profile
+</a>
+
+                    <!-- Bu yerga xohlagan boshqa linklarni qo'shishingiz mumkin -->
+                    <!-- Masalan: Settings, Billing va h.k. -->
+
+                    <div class="border-t border-gray-50 my-1"></div>
+
+                    <!-- Log Out Button -->
+                    <!-- Eslatma: 'logout' degan url name sizning urls.py da bo'lishi kerak -->
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                            Log Out
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-12">
+
+        <!-- Stats Section -->
+        <div class="mb-12 grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-orange-200/50 hover:shadow-xl transition-all">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-rose-500 rounded-2xl flex items-center justify-center text-white">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div class="text-sm text-gray-600">Total Trips</div>
+                </div>
+                <div class="text-4xl font-bold bg-gradient-to-r from-orange-600 to-rose-600 bg-clip-text text-transparent">{{ trips.count }}</div>
+            </div>
+
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-violet-200/50 hover:shadow-xl transition-all">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center text-white">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div class="text-sm text-gray-600">Total Budget</div>
+                </div>
+                <div class="text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">${{ total_budget }}</div>
+            </div>
+
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-rose-200/50 hover:shadow-xl transition-all">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-500 rounded-2xl flex items-center justify-center text-white">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                    </div>
+                    <div class="text-sm text-gray-600">Favorites</div>
+                </div>
+                <div id="favorites-count" class="text-4xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+    {{ favorites_count }}
+</div>
+            </div>
+
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-blue-200/50 hover:shadow-xl transition-all">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center text-white">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                    </div>
+                    <div class="text-sm text-gray-600">Top Destination</div>
+                </div>
+                <div class="text-2xl font-bold text-gray-900 truncate">
+        {{ top_destination }}
+    </div>
+            </div>
+        </div>
+
+        <!-- Header & Search -->
+        <div class="mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+                <div>
+                    <h1 class="text-6xl font-black text-gray-900 mb-2">My Travel <span class="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">Plans</span></h1>
+                    <p class="text-xl text-gray-600">{{ trips.count }} adventures planned</p>
+                </div>
+
+                <a href="{% url 'trip_new' %}" class="group relative px-8 py-4 bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 text-white rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-rose-500/30 transition-all hover:scale-105 inline-flex items-center gap-3 font-bold">
+                    <div class="absolute inset-0 bg-gradient-to-r from-orange-600 via-rose-600 to-violet-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <svg class="w-5 h-5 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    <span class="relative z-10">Create New Plan</span>
+                </a>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="flex flex-col lg:flex-row gap-4">
+                <form method="GET" class="relative flex-1 w-full">
+    <!-- Icon -->
+    <svg class="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+
+    <!-- Input -->
+    <input type="text"
+       name="q"
+       value="{{ request.GET.q|default:'' }}"
+       placeholder="Search by destination..."
+       @input.debounce.500ms="$el.closest('form').submit()"
+       class="w-full pl-14 pr-12 py-4 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:border-orange-300 focus:ring-4 focus:ring-orange-100 transition-all shadow-sm">
+
+    <!-- MUHIM: Agar budget filtri tanlangan bo'lsa, qidirganda u saqlanib qoladi -->
+    {% if request.GET.budget %}
+        <input type="hidden" name="budget" value="{{ request.GET.budget }}">
+    {% endif %}
+</form>
+
+                <!-- View Toggle -->
+                <div class="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-2xl p-1.5">
+                    <button @click="viewMode = 'grid'" :class="viewMode === 'grid' ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'" class="p-3 rounded-xl transition-all">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                    </button>
+                    <button @click="viewMode = 'list'" :class="viewMode === 'list' ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'" class="p-3 rounded-xl transition-all">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                    </button>
+                </div>
+
+                <!-- Filter Toggle -->
+                <!-- Filter Toggle Button (Original Design) -->
+<button @click="showFilters = !showFilters"
+        class="group relative px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-3 shadow-lg shadow-orange-500/20"
+        :class="showFilters || filterBudget.length > 0 ? 'bg-gradient-to-r from-orange-500 to-rose-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-orange-300'">
+
+    <!-- Filter Icon -->
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+
+    <span>Filters</span>
+
+    <!-- Counter Badge (Nechta tanlanganini ko'rsatadi) -->
+    <span x-show="filterBudget.length > 0"
+          x-text="filterBudget.length"
+          class="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold"
+          :class="showFilters || filterBudget.length > 0 ? 'bg-white/20 text-white' : 'bg-orange-100 text-orange-600'">
+    </span>
+</button>
+            </div>
+
+            <!-- Filter Panel (Yangilangan versiya) -->
+<div x-show="showFilters" x-collapse class="mt-4 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-bold text-gray-900">Filter by Budget</h3>
+
+        <!-- Clear All tugmasi (Faqat tanlangan bo'lsa chiqadi) -->
+        <button x-show="filterBudget.length > 0"
+                @click="filterBudget = []"
+                class="text-sm text-red-500 hover:text-red-600 font-bold transition-colors">
+           Clear all
+        </button>
+    </div>
+
+    <div class="flex flex-wrap gap-4">
+
+        <!-- Economy Button -->
+        <button @click="toggleBudget('Economy')"
+           class="px-8 py-3 rounded-2xl font-bold border transition-all flex items-center gap-2"
+           :class="filterBudget.includes('Economy')
+               ? 'bg-blue-500 text-white border-blue-500 shadow-lg shadow-blue-500/30'
+               : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'">
+            <span x-show="!filterBudget.includes('Economy')" class="text-lg">💵</span> Economy
+        </button>
+
+        <!-- Standard Button -->
+        <button @click="toggleBudget('Standard')"
+           class="px-8 py-3 rounded-2xl font-bold border transition-all flex items-center gap-2"
+           :class="filterBudget.includes('Standard')
+               ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white border-transparent shadow-lg shadow-orange-500/30'
+               : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600'">
+            <span x-show="!filterBudget.includes('Standard')" class="text-lg">⚖️</span> Standard
+        </button>
+
+        <!-- Luxury Button -->
+        <button @click="toggleBudget('Luxury')"
+           class="px-8 py-3 rounded-2xl font-bold border transition-all flex items-center gap-2"
+           :class="filterBudget.includes('Luxury')
+               ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-500/30'
+               : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:text-purple-600'">
+            <span x-show="!filterBudget.includes('Luxury')" class="text-lg">💎</span> Luxury
+        </button>
+
+    </div>
+</div>
+        </div>
+
+        <!-- GRID VIEW -->
+        <div x-show="viewMode === 'grid'" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for trip in trips %}
+            <div x-show="matchesFilter('{{ trip.destination|escapejs }}', '{{ trip.budget_type }}')"
+         class="group relative bg-white rounded-[32px] overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                <!-- Image -->
+                <div class="relative h-64 overflow-hidden">
+                    <img src="https://loremflickr.com/800/600/{{ trip.destination }},city/all"
+                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                         onerror="this.src='https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800'">
+
+                    <div class="absolute inset-0 bg-gradient-to-t
+                        {% if trip.budget_type == 'Economy' %}from-blue-500/60 to-cyan-500/20
+                        {% elif trip.budget_type == 'Standard' %}from-orange-500/60 to-rose-500/20
+                        {% else %}from-violet-500/60 to-purple-500/20{% endif %}">
+                    </div>
+
+                    <!-- Budget Badge -->
+                    <div class="absolute top-4 right-4">
+                        <div class="px-4 py-2 bg-white/95 backdrop-blur-sm rounded-full text-sm font-bold flex items-center gap-2">
+                            <span class="
+                                {% if trip.budget_type == 'Economy' %}text-blue-600
+                                {% elif trip.budget_type == 'Standard' %}text-orange-600
+                                {% else %}text-purple-600{% endif %}">
+                                {{ trip.budget_type }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Destination -->
+                    <div class="absolute bottom-0 left-0 right-0 p-6">
+                        <h3 class="text-3xl font-bold text-white mb-1">{{ trip.destination }}</h3>
+                        <div class="flex items-center gap-2 text-white/90 text-sm font-medium">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span>{{ trip.duration_days }} Days Trip</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4 text-sm font-medium text-gray-500">
+                        <div class="flex items-center gap-2">
+                            <svg width="16" height="16" class="text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            {{ trip.created_at|date:"M d, Y" }}
+                        </div>
+                        <div class="text-lg font-bold text-gray-900">${{ trip.budget_amount }}</div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mb-6">
+                        {% for interest in trip.interests.split|slice:":3" %}
+                        <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-gray-600">{{ interest|cut:"," }}</span>
+                        {% endfor %}
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <a href="{% url 'trip_detail' trip.pk %}" class="flex-1 px-4 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all font-bold flex items-center justify-center gap-2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View Details
+                        </a>
+                        <button onclick="toggleLike(event, {{ trip.id }})"
+                                id="like-btn-{{ trip.id }}"
+                                class="absolute top-4 left-4 p-2 bg-white/95 backdrop-blur-sm rounded-full hover:scale-110 transition-all shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                 class="w-5 h-5 transition-colors {% if trip.is_favorite %}fill-rose-500 text-rose-500{% else %}text-gray-400{% endif %}">
+                                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                            </svg>
+                        </button>
+                        <!-- Share Button (Grid uchun) -->
+<button @click="modalOpen = true; modalType = 'share'; selectedTrip = { id: '{{ trip.pk }}', uuid: '{{ trip.share_uuid }}', destination: '{{ trip.destination }}' }"
+        class="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all hover:scale-105 flex items-center justify-center">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+</button>
+
+<!-- Delete Button (Grid uchun) -->
+<button @click="modalOpen = true; modalType = 'delete'; selectedTrip = { id: '{{ trip.pk }}', destination: '{{ trip.destination }}' }"
+        class="px-4 py-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all hover:scale-105 flex items-center justify-center">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+</button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full py-20 text-center">
+                <!-- 1. Agar qidiruv yoki filter ishlatilgan bo'lsa -->
+                {% if request.GET.q or request.GET.budget %}
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <svg class="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><line x1="8" x2="14" y1="8" y2="14"/><line x1="14" x2="8" y1="8" y2="14"/></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">No results found</h3>
+                        <p class="text-gray-500 mb-6">
+                            We couldn't find any trips matching
+                            {% if request.GET.q %}"<span class="font-bold text-gray-800">{{ request.GET.q }}</span>"{% endif %}
+                            {% if request.GET.budget %} with <span class="font-bold text-gray-800">{{ request.GET.budget }}</span> budget{% endif %}.
+                        </p>
+
+                        <!-- "Clear Search" tugmasi - Bu hamma ro'yxatni qaytaradi -->
+                        <a href="{% url 'my_plans_list' %}" class="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:border-orange-300 hover:text-orange-600 transition-all flex items-center gap-2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/></svg>
+                            Clear Search & Show All
+                        </a>
+                    </div>
+
+                <!-- 2. Agar umuman trip bo'lmasa (Yangi user) -->
+                {% else %}
+                    <div class="flex flex-col items-center justify-center">
+                        <h3 class="text-2xl font-bold text-gray-400 mb-2">No plans found 😢</h3>
+                        <a href="{% url 'trip_new' %}" class="text-orange-600 font-bold hover:underline mt-2 inline-block">Create your first plan</a>
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- LIST VIEW (To'g'irlangan versiya) -->
+        <div x-show="viewMode === 'list'" class="space-y-6">
+            {% for trip in trips %}
+             <div x-show="matchesFilter('{{ trip.destination|escapejs }}', '{{ trip.budget_type }}')"
+         class="group bg-white rounded-[32px] overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col md:flex-row">
+
+                <!-- Rasm qismi (Fixed width berildi: md:w-72) -->
+                <div class="relative w-full md:w-72 h-64 md:h-auto shrink-0 overflow-hidden">
+                    <img src="https://loremflickr.com/800/600/{{ trip.destination }},city/all"
+                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                         onerror="this.src='https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800'">
+
+                    <div class="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
+
+                    <!-- Budget Badge -->
+                    <div class="absolute top-4 left-4">
+                         <span class="px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-bold
+                            {% if trip.budget_type == 'Economy' %}text-blue-600
+                            {% elif trip.budget_type == 'Standard' %}text-orange-600
+                            {% else %}text-purple-600{% endif %}">
+                            {{ trip.budget_type }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Content qismi -->
+                <div class="flex-1 p-6 flex flex-col justify-center">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-900">{{ trip.destination }}</h3>
+                            <p class="text-gray-500 text-sm line-clamp-1">AI-generated itinerary for {{ trip.duration_days }} days.</p>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">${{ trip.budget_amount }}</span>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="flex gap-4 text-sm text-gray-500 font-medium mb-6">
+                        <span class="flex items-center gap-1">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            {{ trip.created_at|date:"M d, Y" }}
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            {{ trip.duration_days }} days
+                        </span>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex gap-3">
+                        <!-- View Details -->
+                        <a href="{% url 'trip_detail' trip.pk %}" class="px-5 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all flex items-center gap-2 text-sm">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View Details
+                        </a>
+
+                        <!-- Share Button (Modal bilan) -->
+                        <button @click="modalOpen = true; modalType = 'share'; selectedTrip = { id: '{{ trip.pk }}', uuid: '{{ trip.share_uuid }}', destination: '{{ trip.destination }}' }"
+                                class="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+                        </button>
+
+                        <!-- Delete Button (Modal bilan) -->
+                        <button @click="modalOpen = true; modalType = 'delete'; selectedTrip = { id: '{{ trip.pk }}', destination: '{{ trip.destination }}' }"
+                                class="px-4 py-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+
+</div>
+<script>
+    function toggleLike(event, tripId) {
+        // 1. MUHIM: Tugma bosilganda sahifa sakramasligi va boshqa linklar ochilmasligi uchun
+        event.preventDefault();
+        event.stopPropagation();
+
+        // 2. Button va Iconni topamiz
+        const btn = document.getElementById(`like-btn-${tripId}`);
+        if (!btn) {
+            console.error('Tugma topilmadi! IDlarni tekshiring: like-btn-' + tripId);
+            return;
+        }
+        const svg = btn.querySelector('svg');
+
+        // 3. Serverga so'rov yuboramiz
+        fetch(`/trip/${tripId}/like/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                // A) RANGNI O'ZGARTIRISH
+                if (data.is_favorite) {
+                    svg.classList.add('fill-rose-500', 'text-rose-500'); // Qizil
+                    svg.classList.remove('text-gray-400'); // Kulrangni olib tashlash
+                } else {
+                    svg.classList.remove('fill-rose-500', 'text-rose-500'); // Qizilni olib tashlash
+                    svg.classList.add('text-gray-400'); // Kulrang
+                }
+
+                // B) TEPADAGI RAQAMNI YANGILASH (Yangi qo'shilgan qism)
+                const countElement = document.getElementById('favorites-count');
+                if (countElement && data.new_total !== undefined) {
+                    countElement.innerText = data.new_total;
+                }
+            }
+        })
+        .catch(error => console.error('Xatolik:', error));
+    }
+</script>
+    <!-- ================= MODALS (OYNALAR) ================= -->
+    <div x-show="modalOpen"
+         style="display: none;"
+         class="fixed inset-0 z-[999] flex items-center justify-center px-4"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+
+        <!-- Orqa fon (BLUR shu yerda) -->
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="modalOpen = false"></div>
+
+        <!-- SHARE OYNASI -->
+        <div x-show="modalType === 'share'"
+             class="relative bg-white rounded-[32px] shadow-2xl w-full max-w-lg p-8 transform transition-all"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-8 scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 scale-100">
+
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900">Share <span x-text="selectedTrip.destination"></span></h2>
+                <p class="text-gray-600 mt-1">Anyone with this link can view the itinerary.</p>
+            </div>
+
+            <!-- Copy Link -->
+            <div class="bg-gray-50 p-2 rounded-2xl border border-gray-200 flex items-center gap-2 mb-6" x-data="{ copied: false }">
+                <input type="text" :value="'{{ request.scheme }}://{{ request.get_host }}/share/' + selectedTrip.uuid + '/'" readonly class="bg-transparent flex-1 px-4 py-2 text-gray-600 outline-none font-medium text-sm">
+
+                <button @click="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}/share/' + selectedTrip.uuid + '/'); copied = true; setTimeout(() => copied = false, 2000)"
+                        class="px-5 py-3 rounded-xl font-bold transition-all text-sm"
+                        :class="copied ? 'bg-green-500 text-white' : 'bg-gray-900 text-white hover:bg-gray-800'">
+                    <span x-show="!copied">Copy</span>
+                    <span x-show="copied" class="flex items-center gap-1">Copied</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                 <a :href="'https://t.me/share/url?url={{ request.scheme }}://{{ request.get_host }}/share/' + selectedTrip.uuid + '/'" target="_blank" class="flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors">Telegram</a>
+                 <a :href="'https://wa.me/?text=Check my trip: {{ request.scheme }}://{{ request.get_host }}/share/' + selectedTrip.uuid + '/'" target="_blank" class="flex items-center justify-center gap-2 py-3 bg-green-50 text-green-600 rounded-xl font-bold hover:bg-green-100 transition-colors">WhatsApp</a>
+            </div>
+
+            <button @click="modalOpen = false" class="mt-6 w-full py-3 text-gray-500 font-bold hover:text-gray-900">Close</button>
+        </div>
+
+        <!-- DELETE OYNASI -->
+        <div x-show="modalType === 'delete'"
+             class="relative bg-white rounded-[32px] shadow-2xl w-full max-w-lg p-8 transform transition-all"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-8 scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 scale-100">
+
+            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </div>
+
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Delete Trip?</h2>
+                <p class="text-gray-600">Are you sure you want to delete <span class="font-bold text-gray-900" x-text="selectedTrip.destination"></span>? This cannot be undone.</p>
+            </div>
+
+            <!-- Delete Form -->
+            <form :action="'/trip/' + selectedTrip.id + '/delete/'" method="post" class="flex gap-4">
+                {% csrf_token %}
+                <button type="button" @click="modalOpen = false" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-500/30">Yes, Delete</button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ================= SMART PROFILE MODAL ================= -->
+<div x-show="profileModalOpen"
+     style="display: none;"
+     class="fixed inset-0 z-[999] flex items-center justify-center px-4"
+     x-data="{ activeTab: 'profile' }"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+
+    <!-- Orqa fon (Blur) -->
+    <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="profileModalOpen = false"></div>
+
+    <!-- Modal Card -->
+    <div class="relative bg-white rounded-[32px] shadow-2xl w-full max-w-lg p-10 transform transition-all"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-8 scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 scale-100">
+
+        <!-- Close Button -->
+        <button @click="profileModalOpen = false" class="absolute top-6 right-6 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M18 6 6 18"/><path d="m6 6 18 12"/></svg>
+        </button>
+
+        <!-- 1. PROFILE EDIT FORM (Default) -->
+        <div x-show="activeTab === 'profile'" x-transition:enter="transition ease-out duration-300">
+            <h2 class="text-3xl font-bold text-gray-900 text-center mb-8">Edit Profile</h2>
+
+            <form action="{% url 'profile_edit' %}" method="post" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Rasm -->
+                <div class="flex flex-col items-center gap-4">
+                    <div class="relative group cursor-pointer w-32 h-32">
+                        <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl">
+                            {% if user.profile.profile_picture %}
+                                <img id="modal-preview-img" src="{{ user.profile.profile_picture.url }}" class="w-full h-full object-cover">
+                            {% else %}
+                                <div class="w-full h-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-4xl text-white font-bold">{{ user.username|first|upper }}</div>
+                            {% endif %}
+                        </div>
+                        <label for="modal-file-upload" class="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                        </label>
+                        <input type="file" name="profile_picture" id="modal-file-upload" class="hidden" accept="image/*" onchange="document.getElementById('modal-preview-img').src = window.URL.createObjectURL(this.files[0]);">
+                    </div>
+                    <p class="text-xs text-gray-400 font-medium">Tap image to change</p>
+                </div>
+
+                <!-- Inputlar -->
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wide ml-1">Username</label>
+                        <input type="text" name="username" value="{{ user.username }}" class="w-full px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-orange-500 outline-none font-medium transition-all">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wide ml-1">Email Address</label>
+                         <input type="email"
+           name="email"
+           value="{{ user.email }}"
+           class="w-full px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-orange-500 outline-none font-medium transition-all"
+           required>
+                    </div>
+                </div>
+
+                <!-- Tugmalar -->
+                <div class="pt-4 flex flex-col gap-3">
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 text-white rounded-xl font-bold text-lg shadow-xl hover:scale-[1.02] transition-all">Save Changes</button>
+                    <!-- Password tabga o'tish tugmasi -->
+                    <button type="button" @click="activeTab = 'password'" class="w-full py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-center hover:bg-gray-200 transition-all">Change Password</button>
+                </div>
+            </form>
+        </div>
+        <div x-show="activeTab === 'password'" style="display: none;" x-transition:enter="transition ease-out duration-300">
+    <button @click="activeTab = 'profile'" class="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-bold mb-6 transition-colors">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> Back
+    </button>
+
+    <h2 class="text-3xl font-bold text-gray-900 text-center mb-2">Change Password</h2>
+    <p class="text-center text-gray-500 mb-8 text-sm">Secure your account with a new password</p>
+
+    <!-- FORM: AJAX / Fetch so'rovini yuboradi -->
+    <!-- Password Change Formasi (Modal ichida) -->
+<!-- Password Change Formasi -->
+<form @submit.prevent="submitPasswordChange" id="password-change-form" class="space-y-6">
+    {% csrf_token %}
+
+    <!-- Umumiy xatoliklar chiqadigan joy -->
+    <div id="password-global-errors" class="text-red-500 text-sm font-bold text-center bg-red-50 p-2 rounded-lg hidden"></div>
+
+    {% for field in password_change_form %}
+    <div class="space-y-2">
+        <label class="text-xs font-bold text-gray-500 uppercase tracking-wide ml-1" for="{{ field.id_for_label }}">
+            {{ field.label }}
+        </label>
+
+        <!-- Input -->
+        <input type="password"
+               name="{{ field.name }}"
+               id="{{ field.id_for_label }}"
+               class="w-full px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-orange-500 outline-none font-medium transition-all"
+               required>
+
+        <!-- Har bir maydon uchun xatolik joyi (JS to'ldiradi) -->
+        <p class="text-red-500 text-xs ml-1 font-bold error-msg" id="error-{{ field.name }}"></p>
+    </div>
+    {% endfor %}
+
+    <button type="submit" id="pwd-submit-btn" class="w-full py-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-bold text-lg shadow-xl hover:scale-[1.02] transition-all">
+        Update Password
+    </button>
+</form>
+</div>
+    </div>
+</div>
+
+ <!-- ================= SUCCESS MODAL (DIZAYNI BIR XIL) ================= -->
+    <div x-show="successModalOpen"
+         style="display: none;"
+         class="fixed inset-0 z-[1000] flex items-center justify-center px-4"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+
+        <!-- Orqa fon (Blur) -->
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="successModalOpen = false"></div>
+
+        <!-- Success Card (Skrinshotdagi dizayn bilan bir xil) -->
+        <div class="relative bg-white rounded-[32px] shadow-2xl w-full max-w-md p-10 text-center transform transition-all"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-8 scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 scale-100">
+
+            <!-- Yashil Ticon -->
+            <div class="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+
+            <h2 class="text-3xl font-bold text-gray-900 mb-3">Success!</h2>
+
+            <!-- Django Xabari -->
+             <p id="success-message-text" class="text-gray-500 text-lg mb-8 font-medium leading-relaxed">
+                {% if messages %}
+                    {% for message in messages %}
+                        {{ message }}
+                    {% endfor %}
+                {% else %}
+                    Operation completed successfully.
+                {% endif %}
+            </p>
+
+            <!-- Tugma -->
+            <button @click="successModalOpen = false" class="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-xl shadow-xl hover:scale-[1.02] transition-all">
+                Great, thanks!
+            </button>
+        </div>
+    </div>
+<script>
+    // Global o'zgaruvchi - qayta bosishni oldini olish uchun
+    let isSubmitting = false;
+
+    function submitPasswordChange(event) {
+        // 1. Standart form yuborilishini to'xtatish (ENG MUHIM)
+        event.preventDefault();
+        event.stopPropagation();
+
+        // 2. Agar hozir jo'natilayotgan bo'lsa, to'xtatish
+        if (isSubmitting) return;
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = document.getElementById('pwd-submit-btn'); // Tugma IDsi borligiga ishonch hosil qiling
+
+        // UI elementlari
+        const globalError = document.getElementById('password-global-errors');
+        document.querySelectorAll('.error-msg').forEach(el => el.textContent = '');
+        if (globalError) globalError.classList.add('hidden');
+
+        // 3. QULFNI YOQAMIZ
+        isSubmitting = true;
+
+        // Tugmani o'chiramiz
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="animate-pulse">Updating...</span>';
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        fetch("{% url 'custom_password_change' %}", { // URLni shu yerdan olish ishonchliroq
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // MUVAFFFAQIYATLI
+                const root = document.querySelector('[x-data]');
+                // Alpine ma'lumotlarini olish
+                if (root && root._x_dataStack) {
+                    root._x_dataStack[0].profileModalOpen = false;
+                    root._x_dataStack[0].successModalOpen = true;
+                    root._x_dataStack[0].activeTab = 'profile';
+                }
+                const msgText = document.getElementById('success-message-text');
+                if (msgText && data.message) {
+                    msgText.innerText = data.message;
+                }
+                form.reset();
+            } else {
+                // XATOLIK
+                if (data.errors) {
+                    for (const [field, messages] of Object.entries(data.errors)) {
+                        const errorElement = document.getElementById('error-' + field);
+                        if (errorElement) {
+                            errorElement.textContent = messages[0].message;
+                        } else if (globalError) {
+                            globalError.textContent = messages[0].message;
+                            globalError.classList.remove('hidden');
+                        }
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (globalError) {
+                globalError.textContent = "Connection error. Please try again.";
+                globalError.classList.remove('hidden');
+            }
+        })
+        .finally(() => {
+            // 4. QULFNI OCHAMIZ
+            isSubmitting = false;
+
+            // Tugmani tiklaymiz
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Update Password';
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+    }
+</script>
+{% endblock content %}

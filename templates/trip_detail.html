@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load trip_extras %}
+
+{% block title %}Your Trip to {{ trip.destination }} - TravelScout{% endblock title %}
+
+{% block content %}
+<!-- JSON ma'lumotni o'qib olamiz -->
+{% with itinerary_json=trip.itinerary|json_load %}
+
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<div class="min-h-screen bg-gray-50 font-sans pb-20">
+
+    <!-- Navbar (Export tugmasiz) -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-4 flex justify-between items-center">
+            <a href="{% url 'my_plans_list' %}" class="flex items-center gap-2 text-gray-600 hover:text-orange-600 font-bold transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section (Rasm fix qilindi - loremflickr ishlatildi) -->
+    <div class="relative h-[450px] w-full bg-gray-900 group overflow-hidden">
+        <img src="https://loremflickr.com/1600/900/{{ trip.destination }},city,landmark/all"
+             class="w-full h-full object-cover opacity-70 transition-transform duration-1000 group-hover:scale-105"
+             alt="{{ trip.destination }}"
+             onerror="this.src='https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600'">
+
+        <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
+
+        <div class="absolute bottom-0 left-0 w-full p-8 md:p-16">
+            <div class="max-w-[1600px] mx-auto px-6 lg:px-12">
+                <div class="flex gap-3 mb-6">
+                    <span class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold border border-white/30 flex items-center gap-2 shadow-lg">
+                        📍 {{ trip.destination }}
+                    </span>
+                      <span class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold border border-white/30 flex items-center gap-2 shadow-lg">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        {{ trip.start_date|date:"M d, Y" }}
+                    </span>
+                    <span class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold border border-white/30 flex items-center gap-2 shadow-lg">
+                        📅 {{ trip.duration_days }} Days
+                    </span>
+                </div>
+                <h1 class="text-6xl md:text-7xl font-black text-white mb-3 tracking-tight">Your {{ trip.destination }} Adventure</h1>
+                <p class="text-2xl text-gray-200 font-medium">AI-crafted itinerary personalized for your {{ trip.budget_type }} budget.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="max-w-[1600px] mx-auto px-6 lg:px-12 py-12">
+        <!-- MUHIM O'ZGARISH: 'items-start' olib tashlandi. Endi o'ng ustun ham uzun bo'ladi va sticky ishlaydi -->
+        <div class="grid lg:grid-cols-12 gap-8">
+
+            <!-- LEFT COLUMN (Itinerary + Summary) -->
+            <div class="lg:col-span-7 space-y-10">
+
+                <!-- 1. Itinerary Section -->
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-3xl font-bold text-gray-900">Day-by-Day Itinerary</h2>
+                        <span class="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full font-bold uppercase tracking-wide flex items-center gap-1">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275-1.275L12 21l1.912-5.813a2 2 0 0 1-1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                            AI Generated
+                        </span>
+                    </div>
+
+                    <div class="space-y-4">
+                    {% if itinerary_json.days %}
+                        {% for day in itinerary_json.days %}
+                        <div x-data="{ open: {% if forloop.first %}true{% else %}false{% endif %} }" class="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+                            <button @click="open = !open" class="w-full px-8 py-6 flex items-center justify-between hover:bg-gray-50 transition-colors text-left focus:outline-none">
+                                <div class="flex items-center gap-6">
+                                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-rose-500 text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
+                                        {{ day.day }}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-gray-900">Day {{ day.day }}: {{ day.title }}</h3>
+                                        <p class="text-sm text-gray-500 font-medium">{{ day.activities|length }} activities planned</p>
+                                    </div>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center transition-transform duration-300" :class="open ? 'rotate-180 bg-gray-200' : ''">
+                                    <svg class="w-6 h-6 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
+                            </button>
+
+                            <div x-show="open" x-collapse class="px-8 pb-8 pt-2 space-y-4 border-t border-gray-100 bg-white">
+                                {% for activity in day.activities %}
+                                <div class="flex gap-5 p-5 bg-gray-50/80 rounded-2xl border border-gray-100 hover:border-orange-200 transition-colors">
+                                    <div class="mt-1 w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                                        {% if 'coffee' in activity.icon %}☕{% elif 'camera' in activity.icon %}📸{% elif 'fork' in activity.icon or 'utensils' in activity.icon %}🍽️{% elif 'shop' in activity.icon %}🛍️{% elif 'build' in activity.icon %}🏛️{% else %}📍{% endif %}
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex flex-wrap justify-between items-start gap-2 mb-1">
+                                            <h4 class="font-bold text-gray-900 text-lg">{{ activity.title }}</h4>
+                                            <span class="text-xs font-bold bg-gray-200 text-gray-700 px-3 py-1 rounded-full">{{ activity.time }}</span>
+                                        </div>
+                                        <p class="text-gray-600 mb-3 leading-relaxed">{{ activity.description }}</p>
+                                        <div class="flex flex-wrap gap-3 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                                            {% if activity.cost %}
+                                            <span class="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
+                                                💵 {{ activity.cost }}
+                                            </span>
+                                            {% endif %}
+                                            <span class="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200">
+                                                📍 {{ activity.location }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-gray-300">
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">No Itinerary Generated</h3>
+                            <p class="text-gray-500 mb-6">Please try creating a new plan.</p>
+                            <a href="{% url 'trip_new' %}" class="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors">New Plan</a>
+                        </div>
+                    {% endif %}
+                    </div>
+                </div>
+
+                <!-- 2. Trip Summary (CHAP TOMONDA) -->
+                <div class="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Trip Summary</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-600">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
+                                </div>
+                                <span class="text-gray-600 font-medium">Budget Level</span>
+                            </div>
+                            <span class="font-bold text-gray-900 text-lg">{{ trip.budget_type }}</span>
+                        </div>
+
+                        <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                </div>
+                                <span class="text-gray-600 font-medium">Estimated Cost</span>
+                            </div>
+                             <div class="flex flex-col items-end">
+                                <span class="font-bold text-green-600 text-xl">${{ trip.budget_amount }}</span>
+                                <span class="text-xs text-gray-400 font-medium mt-0.5">*Excl. flights • Per person</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                </div>
+                                <span class="text-gray-600 font-medium">Duration</span>
+                            </div>
+                            <span class="font-bold text-gray-900 text-lg">{{ trip.duration_days }} Days</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN (Sticky: Map + Interests + CTA) -->
+            <div class="lg:col-span-5 relative">
+
+                <!-- STICKY CONTAINER -->
+                <!-- sticky ishlaydi chunki 'grid' da 'items-start' olib tashlandi -->
+                <div class="sticky top-24 space-y-8">
+
+                    <!-- 1. Map Overview -->
+                    <div class="bg-white p-2 rounded-3xl border border-gray-200 shadow-xl">
+                        <div class="p-4 flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-gray-900">Map Overview</h3>
+                            <svg width="20" height="20" class="text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                        </div>
+                        <div class="relative h-[350px] w-full bg-gray-100 rounded-2xl overflow-hidden border border-gray-100">
+                             <iframe
+                                width="100%"
+                                height="100%"
+                                frameborder="0"
+                                style="border:0"
+                                scrolling="no"
+                                src="https://maps.google.com/maps?q={{ trip.destination }}+tourist+attractions&t=&z=13&ie=UTF8&iwloc=&output=embed">
+                            </iframe>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-b-3xl">
+                            <p class="text-xs text-center text-gray-500">Showing popular locations in {{ trip.destination }}</p>
+                        </div>
+                    </div>
+
+                    <!-- 2. Your Interests -->
+                    <div class="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
+                        <h3 class="text-xl font-bold text-gray-900 mb-4">Your Interests</h3>
+                        <div class="flex flex-wrap gap-2">
+                            {% for tag in clean_interests %}
+                                <span class="px-4 py-2 bg-orange-50 text-orange-700 text-sm font-bold rounded-full border border-orange-100">
+                                    {{ tag }}
+                                </span>
+                            {% empty %}
+                                <span class="text-sm text-gray-400">No interests selected</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- 3. Ready to Book (CTA) -->
+                    <div class="bg-gradient-to-br from-orange-500 via-rose-500 to-pink-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
+                        <div class="relative z-10">
+                            <h3 class="text-2xl font-bold mb-2">Ready to Book?</h3>
+                            <p class="text-white/90 mb-6 font-medium">Find the best flight deals to {{ trip.destination }} now.</p>
+                            <button class="w-full py-4 bg-white text-orange-600 rounded-xl font-bold hover:shadow-xl transition-all flex items-center justify-center gap-2 group">
+                                <svg class="w-5 h-5 group-hover:-rotate-12 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20"/><path d="M13 2 9.3 12 13 22"/><path d="M11 2 7.3 12 11 22"/></svg>
+                                <span>Search Flights</span>
+                            </button>
+                        </div>
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                    </div>
+
+                </div> <!-- End Sticky -->
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endwith %}
+{% endblock content %}
