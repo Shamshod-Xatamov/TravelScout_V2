@@ -20,6 +20,7 @@ dj-database-url = "*"
 psycopg2-binary = "*"
 whitenoise = "*"
 gunicorn = "*"
+django-cloudinary-storage = "*"
 
 [dev-packages]
 
