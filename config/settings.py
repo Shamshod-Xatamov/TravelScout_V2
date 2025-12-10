@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from decouple import config
+import dj_database_url
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +29,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG') == 'True'
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['.vercel.app', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -59,6 +61,7 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -92,10 +95,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),
+        conn_max_age=600
+    )
 }
 
 
@@ -173,3 +176,6 @@ SOCIALACCOUNT_PROVIDERS = {
 # Amadeus API Config
 AMADEUS_CLIENT_ID = config('AMADEUS_CLIENT_ID')
 AMADEUS_CLIENT_SECRET = config('AMADEUS_CLIENT_SECRET')
+
+STATIC_ROOT = BASE_DIR / 'staticfiles' # Vercel shu yerga yig'adi
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

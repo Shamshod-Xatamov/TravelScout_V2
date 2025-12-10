@@ -16,6 +16,10 @@ groq = "*"
 python-dotenv = "*"
 amadeus = "*"
 python-decouple = "*"
+dj-database-url = "*"
+psycopg2-binary = "*"
+whitenoise = "*"
+gunicorn = "*"
 
 [dev-packages]
 
