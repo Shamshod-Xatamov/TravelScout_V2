@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a1d065e2ccc7ce99c1bb0037eda56f1589750b0fbafb48f22b27088a164d5b29"
+            "sha256": "b99009aee0f9c038b1527261695f19cf51480cd8cb44478ba5ba40ab75576083"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -17,6 +17,14 @@
         ]
     },
     "default": {
+        "amadeus": {
+            "hashes": [
+                "sha256:80d4b844cdfc2ada937061949b04527b0c2fe229d276eeb554b78ef778b053a5"
+            ],
+            "index": "pypi",
+            "markers": "python_full_version >= '3.4.8'",
+            "version": "==12.0.0"
+        },
         "annotated-types": {
             "hashes": [
                 "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53",
@@ -1039,6 +1047,14 @@
             ],
             "markers": "python_version >= '3.9'",
             "version": "==0.17.2"
+        },
+        "python-decouple": {
+            "hashes": [
+                "sha256:ba6e2657d4f376ecc46f77a3a615e058d93ba5e465c01bbe57289bfb7cce680f",
+                "sha256:d0d45340815b25f4de59c974b855bb38d03151d81b037d9e3f463b0c9f8cbd66"
+            ],
+            "index": "pypi",
+            "version": "==3.8"
         },
         "python-dotenv": {
             "hashes": [

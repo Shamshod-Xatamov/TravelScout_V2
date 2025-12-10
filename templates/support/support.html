@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Contact - TravelScout{% endblock title %}
+
+{% block content %}
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<div class="min-h-screen bg-[#FFFBF5] font-sans pt-20 pb-20"
+     x-data="{
+        formData: {
+            // Agar user kirgan bo'lsa, ismini olamiz, bo'lmasa bo'sh
+            name: '{{ user.first_name|default:user.username|default:"" }}',
+
+            // Agar user kirgan bo'lsa, emailini olamiz, bo'lmasa bo'sh
+            email: '{{ user.email|default:"" }}',
+
+            subject: '',
+            message: ''
+        },
+        isSubmitting: false,
+        submitSuccess: false,
+
+        async handleSubmit() {
+            this.isSubmitting = true;
+            try {
+                const response = await fetch('{% url "support" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(this.formData)
+                });
+
+                if (response.ok) {
+                    this.submitSuccess = true;
+                    this.formData = { name: '', email: '', subject: '', message: '' };
+                    setTimeout(() => { this.submitSuccess = false; }, 5000);
+                } else {
+                    alert('Server error. Please try again.');
+                }
+            } catch (error) {
+                console.error('Network Error:', error);
+                alert('Network error.');
+            } finally {
+                this.isSubmitting = false;
+            }
+        }
+     }">
+
+    <div class="max-w-7xl mx-auto px-6">
+
+        <div class="grid lg:grid-cols-2 gap-20 items-start">
+
+            <!-- LEFT SIDE: Quick Contact -->
+            <div>
+                <!-- Header Left -->
+                <h2 class="text-4xl font-black text-gray-900 mb-3">Quick Contact</h2>
+                <p class="text-gray-600 mb-10 text-lg">Connect with us instantly on your preferred platform</p>
+
+                <div class="space-y-6">
+                    <!-- 1. TELEGRAM -->
+                    <a href="https://t.me/Kamilovich_k" target="_blank"
+                       class="flex items-center gap-5 p-5 bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                        <div class="w-14 h-14 bg-[#0088cc] rounded-full flex items-center justify-center text-white shrink-0">
+                            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2L2 11.5L9.5 14L13.5 21L21.5 2Z"/><path d="M21.5 2L9.5 14"/></svg>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-900 text-xl">Telegram</h3>
+                            <p class="text-gray-500">Chat with us instantly</p>
+                        </div>
+                        <svg class="w-6 h-6 text-gray-300 group-hover:text-[#0088cc] transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </a>
+
+                    <!-- 2. WHATSAPP -->
+                    <a href="https://wa.me/+998936067977" target="_blank"
+                       class="flex items-center gap-5 p-5 bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                        <div class="w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center text-white shrink-0">
+                            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-900 text-xl">WhatsApp</h3>
+                            <p class="text-gray-500">Message us directly</p>
+                        </div>
+                        <svg class="w-6 h-6 text-gray-300 group-hover:text-[#25D366] transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </a>
+
+                    <!-- 3. DISCORD -->
+                    <a href="https://discord.gg/WKWpA4UN" target="_blank"
+                       class="flex items-center gap-5 p-5 bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                        <div class="w-14 h-14 bg-[#5865F2] rounded-full flex items-center justify-center text-white shrink-0">
+                            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.419-2.1568 2.419zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.419-2.1568 2.419z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-900 text-xl">Discord</h3>
+                            <p class="text-gray-500">Join our community</p>
+                        </div>
+                        <svg class="w-6 h-6 text-gray-300 group-hover:text-[#5865F2] transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </a>
+
+                    <!-- DISCLAIMER BOX -->
+                    <div class="mt-8 p-6 rounded-[24px] bg-orange-50 border border-orange-100/50 flex gap-4">
+                        <div class="shrink-0 mt-1">
+                            <svg class="w-6 h-6 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 mb-1">Quick Response Time</h4>
+                            <p class="text-gray-600 text-sm leading-relaxed">
+                                We typically respond within 24 hours on all platforms. For urgent matters, we recommend using Telegram or WhatsApp for faster responses.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT SIDE: Email Contact Form -->
+            <div>
+                <!-- Header Right -->
+                <h2 class="text-4xl font-black text-gray-900 mb-3">Send us a Message</h2>
+                <p class="text-gray-600 mb-10 text-lg">Prefer email? Fill out the form below and we'll get back to you soon.</p>
+
+                <!-- SUCCESS STATE -->
+                <div x-show="submitSuccess" style="display: none;"
+                     class="bg-white rounded-[32px] shadow-lg p-12 text-center border border-green-100"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100">
+
+                    <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-10 h-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Message Sent!</h3>
+                    <p class="text-gray-600 text-lg">
+                      Thank you for contacting us. We'll respond to your email shortly.
+                    </p>
+                    <button @click="submitSuccess = false" class="mt-8 text-orange-600 font-bold hover:underline">Send another message</button>
+                </div>
+
+                <!-- FORM -->
+                <form @submit.prevent="handleSubmit"
+                      x-show="!submitSuccess"
+                      x-transition:enter="transition ease-out duration-300"
+                      class="bg-white rounded-[32px] shadow-sm border border-gray-100 p-8 space-y-6">
+
+                    <!-- Name -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Your Name</label>
+                        <input type="text" x-model="formData.name" placeholder="John Doe" required
+                               class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all bg-gray-50/50">
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            </span>
+                            <input type="email" x-model="formData.email" placeholder="john@example.com" required
+                                   class="w-full pl-12 pr-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all bg-gray-50/50">
+                        </div>
+                    </div>
+
+                    <!-- Subject -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Subject</label>
+                        <input type="text" x-model="formData.subject" placeholder="How can we help?" required
+                               class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all bg-gray-50/50">
+                    </div>
+
+                    <!-- Message -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Message</label>
+                        <textarea x-model="formData.message" rows="5" placeholder="Tell us more about your inquiry..." required
+                                  class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none outline-none transition-all bg-gray-50/50"></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" :disabled="isSubmitting"
+                            class="w-full bg-gradient-to-r from-orange-500 to-rose-500 text-white py-4 rounded-2xl hover:from-orange-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-lg shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 hover:-translate-y-0.5">
+                        <template x-if="isSubmitting">
+                             <div class="flex items-center gap-2">
+                                <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Sending...</span>
+                             </div>
+                        </template>
+                        <template x-if="!isSubmitting">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                <span>Send Message</span>
+                            </div>
+                        </template>
+                    </button>
+
+                    <p class="text-xs text-center text-gray-400">
+                      By submitting this form, you agree to our privacy policy
+                    </p>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock content %}

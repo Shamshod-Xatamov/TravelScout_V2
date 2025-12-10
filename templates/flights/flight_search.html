@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Flight Finder - TravelScout{% endblock title %}
+
+{% block content %}
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<div class="min-h-screen bg-gradient-to-br from-orange-100 via-amber-50 to-rose-100 font-sans pb-20"
+     x-data="{
+        searchParams: {
+            from: '',       // IATA Code kutiladi (masalan: TAS)
+            to: '',         // IATA Code kutiladi (masalan: JFK)
+            departDate: '',
+            returnDate: '',
+            passengers: 1,
+            class: 'economy'
+        },
+        searchResults: [],
+        isSearching: false,
+        hasSearched: false,
+        errorMessage: '',
+
+        async handleSearch() {
+            this.isSearching = true;
+            this.hasSearched = false;
+            this.errorMessage = '';
+            this.searchResults = [];
+
+            if (!this.searchParams.from || !this.searchParams.to || !this.searchParams.departDate) {
+                alert('Please fill in From (Code), To (Code), and Departure Date.');
+                this.isSearching = false;
+                return;
+            }
+
+            try {
+                const response = await fetch('{% url "flight_search_api" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(this.searchParams)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    this.searchResults = data.results;
+                } else {
+                    this.errorMessage = data.error || 'Something went wrong';
+                }
+            } catch (error) {
+                this.errorMessage = 'Network error. Please try again.';
+                console.error(error);
+            } finally {
+                this.isSearching = false;
+                this.hasSearched = true;
+            }
+        },
+
+        handleBookFlight(id) {
+            alert('Booking feature for flight ' + id + ' coming soon!');
+        }
+     }">
+
+    <!-- Header -->
+     <div class="max-w-7xl mx-auto px-6 py-12">
+
+        <!-- YANGI SARLAVHA (O'rtada, chiroyli Hero style) -->
+        <div class="text-center mb-10">
+
+            <h1 class="text-4xl md:text-5xl font-black text-gray-900 mb-3 tracking-tight">
+                Find Your <span class="bg-gradient-to-r from-orange-600 to-rose-600 bg-clip-text text-transparent">Perfect Flight</span>
+            </h1>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                Search real-time prices from 400+ airlines and book your next adventure in seconds.
+            </p>
+        </div>
+
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Search Form -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+            <form @submit.prevent="handleSearch">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+
+                    <!-- From -->
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-2 font-bold">From (IATA Code)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">✈️</span>
+                            <input type="text" x-model="searchParams.from" placeholder="e.g. TAS, JFK, LHR"
+                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent uppercase font-bold text-gray-700" required>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Use Airport Codes (TAS = Tashkent)</p>
+                    </div>
+
+                    <!-- To -->
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-2 font-bold">To (IATA Code)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🛬</span>
+                            <input type="text" x-model="searchParams.to" placeholder="e.g. DXB, IST, CDG"
+                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent uppercase font-bold text-gray-700" required>
+                        </div>
+                    </div>
+
+                    <!-- Depart Date -->
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-2 font-bold">Depart</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">📅</span>
+                            <input type="date" x-model="searchParams.departDate"
+                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent" required>
+                        </div>
+                    </div>
+
+                    <!-- Passengers -->
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-2 font-bold">Passengers</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+                            <select x-model="searchParams.passengers" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white">
+                                <option value="1">1 Passenger</option>
+                                <option value="2">2 Passengers</option>
+                                <option value="3">3 Passengers</option>
+                                <option value="4">4 Passengers</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Class -->
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-2 font-bold">Class</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">💎</span>
+                            <select x-model="searchParams.class" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white">
+                                <option value="economy">Economy</option>
+                                <option value="premium">Premium Economy</option>
+                                <option value="business">Business</option>
+                                <option value="first">First Class</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Button -->
+                <button type="submit" :disabled="isSearching"
+                        class="w-full bg-gradient-to-r from-orange-500 to-rose-500 text-white py-4 rounded-xl hover:from-orange-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-lg shadow-lg shadow-orange-500/30">
+                    <template x-if="isSearching">
+                        <div class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </template>
+                    <span x-text="isSearching ? 'Searching Flights...' : 'Search Flights'"></span>
+                </button>
+            </form>
+        </div>
+
+        <!-- ERROR MESSAGE -->
+        <div x-show="errorMessage" class="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-center mb-6 font-bold" x-text="errorMessage"></div>
+
+        <!-- RESULTS SECTION -->
+        <template x-if="hasSearched && searchResults.length > 0">
+            <div>
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Available Flights</h2>
+                        <p class="text-gray-600">Found <span x-text="searchResults.length"></span> flights</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <template x-for="flight in searchResults" :key="flight.id">
+                        <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
+                            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+
+                                <!-- Flight Info -->
+                                <div class="flex-1 w-full">
+                                    <div class="flex items-center gap-4 mb-6">
+                                        <div class="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl text-white font-bold text-xs" x-text="flight.airline.substring(0,2).toUpperCase()"></div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-900" x-text="flight.airline"></h3>
+                                            <p class="text-sm text-gray-500 font-medium" x-text="flight.flightNumber"></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-3 gap-4 items-center">
+                                        <!-- Dep -->
+                                        <div>
+                                            <p class="text-2xl font-black text-gray-900" x-text="flight.departure.time"></p>
+                                            <p class="text-lg font-bold text-gray-700" x-text="flight.departure.airport"></p>
+                                        </div>
+
+                                        <!-- Duration Visualization -->
+                                        <div class="text-center flex flex-col items-center">
+                                            <span class="text-xs text-gray-500 mb-1" x-text="flight.duration"></span>
+                                            <div class="relative w-full flex items-center">
+                                                <div class="h-[2px] bg-gray-300 w-full"></div>
+                                                <div class="absolute inset-0 flex items-center justify-center">
+                                                     <span class="bg-white px-2 text-xs font-bold"
+                                                           :class="flight.stops === 0 ? 'text-green-600' : 'text-orange-500'"
+                                                           x-text="flight.stops === 0 ? 'Non-stop' : flight.stops + ' stop'"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Arr -->
+                                        <div class="text-right">
+                                            <p class="text-2xl font-black text-gray-900" x-text="flight.arrival.time"></p>
+                                            <p class="text-lg font-bold text-gray-700" x-text="flight.arrival.airport"></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Price & Action -->
+                                <div class="md:border-l md:pl-8 border-gray-100 w-full md:w-auto text-right flex flex-row md:flex-col justify-between items-center md:items-end">
+                                    <div class="mb-0 md:mb-4">
+                                        <p class="text-xs text-gray-500 font-bold uppercase">Total Price</p>
+                                        <p class="text-3xl font-black text-gray-900">
+                                            <span x-text="flight.currency"></span> <span x-text="flight.price"></span>
+                                        </p>
+                                    </div>
+                                    <button @click="handleBookFlight(flight.id)"
+                                            class="px-6 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-lg">
+                                        Select
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- No Results -->
+        <template x-if="hasSearched && searchResults.length === 0 && !errorMessage">
+            <div class="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
+                <div class="text-6xl mb-4">✈️</div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">No flights found</h3>
+                <p class="text-gray-600">Try changing dates or airports (Make sure to use correct IATA codes like JFK, TAS).</p>
+            </div>
+        </template>
+
+        <!-- Welcome State -->
+        <template x-if="!hasSearched && !isSearching">
+             <div class="text-center py-20 opacity-60">
+                <div class="text-6xl mb-4">🌍</div>
+                <h3 class="text-2xl font-bold text-gray-800">Ready to take off?</h3>
+                <p>Enter your destination above to see real-time prices.</p>
+             </div>
+        </template>
+
+    </div>
+</div>
+{% endblock content %}

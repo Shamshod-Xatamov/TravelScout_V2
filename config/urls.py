@@ -25,7 +25,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
-
+    path('flights/', include('flights.urls')),
+    path('support/', include('support.urls')),
+    path('stories/', include('stories.urls')),
     # 2. O'zimizning app
     path('', include('trips.urls')),
 ]
