@@ -14,3 +14,5 @@ django-allauth
 amadeus
 PyJWT
 cryptography
+cloudinary
+django-cloudinary-storage
