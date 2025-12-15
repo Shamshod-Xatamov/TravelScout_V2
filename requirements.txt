@@ -1,4 +1,4 @@
-Django==6.0
+Django
 gunicorn
 whitenoise
 dj-database-url
@@ -16,3 +16,4 @@ PyJWT
 cryptography
 cloudinary
 django-cloudinary-storage
+python-decouple
