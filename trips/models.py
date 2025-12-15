@@ -43,19 +43,30 @@ class Trip(models.Model):
         return f"{self.destination} ({self.user.username})"
 
 
+from cloudinary_storage.storage import MediaCloudinaryStorage
+
+
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    # Rasm yuklanadigan joy
-    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+
+    # 2. O'ZGARGAN JOY: storage=MediaCloudinaryStorage() qo'shildi
+    profile_picture = models.ImageField(
+        upload_to='profile_pics/',
+        blank=True,
+        null=True,
+        storage=MediaCloudinaryStorage()  # <--- MANA SHU XATONI TUZATADI
+    )
 
     def __str__(self):
         return f"{self.user.username} Profile"
+
 
 # --- SIGNAL: User yaratilganda avtomatik Profile ham yaratilsin ---
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
+
 
 @receiver(post_save, sender=User)
 def save_profile(sender, instance, **kwargs):
